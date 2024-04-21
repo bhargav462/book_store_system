@@ -4,6 +4,12 @@ const { executeQuery } = require('../datasources/postgres');
 
 class Book {}
 
+Book.chargesEnum = {
+    regular: 1.5,
+    fiction: 3,
+    novel: 1.5,
+};
+
 Book.prototype.initializeBookByName = async (bookName) => {
     const bookQuery = `SELECT * from book WHERE name = $1`;
     const bookQueryResult = await executeQuery(bookQuery, [bookName]);
@@ -54,6 +60,7 @@ Book.prototype.checkAvailability = async () => {
 };
 
 Book.prototype.getCharges = async (params = {}) => {
+    const self = this;
     const { customerId } = params;
     const lendingRecordQuery = `
         SELECT
@@ -62,14 +69,15 @@ Book.prototype.getCharges = async (params = {}) => {
         FROM lending_record
         WHERE lending_record.customer_id = $1 AND lending_record.book_id = $2 AND lending_record.is_returned = $3
     `;
-    const queryParams = [customerId, this.requiredBook.id, false];
+    const queryParams = [customerId, self.requiredBook.id, false];
     const lendingRecordQueryResult = await executeQuery(lendingRecordQuery, queryParams);
 
     if (!Array.isArray(lendingRecordQueryResult) || !lendingRecordQueryResult.length) {
         throw Error('Record not found');
     }
 
-    return moment().diff(moment(lendingRecordQueryResult[0].lend_date), 'days');
+    const numberOfDays = moment().diff(moment(lendingRecordQueryResult[0].lend_date), 'days');
+    return numberOfDays*(Book.chargesEnum[self.requiredBook.type] || Book.chargesEnum['regular']);
 }
 
 module.exports = Book;

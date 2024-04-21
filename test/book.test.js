@@ -1,5 +1,7 @@
 const moment = require('moment');
+
 const { checkAvailability, getCharges } = require('../controllers/book');
+const Book = require('../models/book');
 
 jest.mock('../datasources/postgres', () => ({
     executeQuery: jest.fn(),
@@ -206,18 +208,19 @@ describe('getCharges function', () => {
         });
     });
 
-    it('should return charges if all data is valid and record found', async () => {
+    it('should return charges if all data is valid, type is novel and record found', async () => {
         const lend_date = new Date();
         lend_date.setDate(lend_date.getDate() - 5);
 
         const expectedCharges = moment().diff(moment(lend_date), 'days');
-
-        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
-        executeQuery.mockResolvedValueOnce([{ id: 2 }]);
-        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
-        
         const customerName = 'Customer';
         const bookName = 'Book';
+        const type = 'novel';
+
+        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
+        executeQuery.mockResolvedValueOnce([{ id: 2, type }]);
+        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
+        
         const req = { body: [{ customer_name: customerName, book_name: bookName }] };
         const res = { json: jest.fn() };
 
@@ -228,7 +231,34 @@ describe('getCharges function', () => {
             data: [{
                 customer_name: customerName,
                 book_name: bookName,
-                charges: expectedCharges,
+                charges: expectedCharges*(Book.chargesEnum[type]),
+            }],
+        });
+    });
+
+    it('should return charges if all data is valid, type is not present and record found', async () => {
+        const lend_date = new Date();
+        lend_date.setDate(lend_date.getDate() - 5);
+
+        const expectedCharges = moment().diff(moment(lend_date), 'days');
+        const customerName = 'Customer';
+        const bookName = 'Book';
+
+        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
+        executeQuery.mockResolvedValueOnce([{ id: 2 }]);
+        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
+        
+        const req = { body: [{ customer_name: customerName, book_name: bookName }] };
+        const res = { json: jest.fn() };
+
+        await getCharges(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: [{
+                customer_name: customerName,
+                book_name: bookName,
+                charges: expectedCharges*(Book.chargesEnum['regular']),
             }],
         });
     });
