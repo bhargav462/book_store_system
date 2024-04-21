@@ -212,7 +212,6 @@ describe('getCharges function', () => {
         const lend_date = new Date();
         lend_date.setDate(lend_date.getDate() - 5);
 
-        const expectedCharges = moment().diff(moment(lend_date), 'days');
         const customerName = 'Customer';
         const bookName = 'Book';
         const type = 'novel';
@@ -231,16 +230,42 @@ describe('getCharges function', () => {
             data: [{
                 customer_name: customerName,
                 book_name: bookName,
-                charges: expectedCharges*(Book.chargesEnum[type]),
+                charges: 7.5,
             }],
         });
     });
 
-    it('should return charges if all data is valid, type is not present and record found', async () => {
+    it('should return charges as 4.5 if all data is valid, type is novel, number of days is less than 3 and record found', async () => {
+        const lend_date = new Date();
+        lend_date.setDate(lend_date.getDate() - 1);
+
+        const customerName = 'Customer';
+        const bookName = 'Book';
+        const type = 'novel';
+
+        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
+        executeQuery.mockResolvedValueOnce([{ type, id: 2 }]);
+        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
+        
+        const req = { body: [{ customer_name: customerName, book_name: bookName }] };
+        const res = { json: jest.fn() };
+
+        await getCharges(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: [{
+                customer_name: customerName,
+                book_name: bookName,
+                charges: 4.5,
+            }],
+        });
+    });
+
+    it('should throw an error if all data is valid, type is not present and record found', async () => {
         const lend_date = new Date();
         lend_date.setDate(lend_date.getDate() - 5);
 
-        const expectedCharges = moment().diff(moment(lend_date), 'days');
         const customerName = 'Customer';
         const bookName = 'Book';
 
@@ -258,7 +283,61 @@ describe('getCharges function', () => {
             data: [{
                 customer_name: customerName,
                 book_name: bookName,
-                charges: expectedCharges*(Book.chargesEnum['regular']),
+                message: "Invalid book type"
+            }],
+        });
+    });
+
+    it('should return charges if all data is valid, type is regular and record found', async () => {
+        const lend_date = new Date();
+        lend_date.setDate(lend_date.getDate() - 5);
+
+        const customerName = 'Customer';
+        const bookName = 'Book';
+        const type = 'regular';
+
+        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
+        executeQuery.mockResolvedValueOnce([{ id: 2, type }]);
+        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
+        
+        const req = { body: [{ customer_name: customerName, book_name: bookName }] };
+        const res = { json: jest.fn() };
+
+        await getCharges(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: [{
+                customer_name: customerName,
+                book_name: bookName,
+                charges: 6.5,
+            }],
+        });
+    });
+
+    it('should return charges as 2 if all data is valid, type is regular, number of days is less than 2 and record found', async () => {
+        const lend_date = new Date();
+        lend_date.setDate(lend_date.getDate() - 1);
+
+        const customerName = 'Customer';
+        const bookName = 'Book';
+        const type = 'regular';
+
+        executeQuery.mockResolvedValueOnce([{ id: 1 }]);
+        executeQuery.mockResolvedValueOnce([{ id: 2, type }]);
+        executeQuery.mockResolvedValueOnce([{ lend_date, days_to_return: 10 }]);
+        
+        const req = { body: [{ customer_name: customerName, book_name: bookName }] };
+        const res = { json: jest.fn() };
+
+        await getCharges(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: [{
+                customer_name: customerName,
+                book_name: bookName,
+                charges: 2,
             }],
         });
     });

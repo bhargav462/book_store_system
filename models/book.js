@@ -4,10 +4,32 @@ const { executeQuery } = require('../datasources/postgres');
 
 class Book {}
 
-Book.chargesEnum = {
-    regular: 1.5,
-    fiction: 3,
-    novel: 1.5,
+Book.getChargesByType = (params = {}) => {
+    const { numberOfDays, type } = params;
+    let charges = 0;
+
+    switch (type) {
+        case 'regular':
+            charges = 2;
+    
+            if (numberOfDays - 2 > 0) {
+                charges += (numberOfDays - 2) * 1.5;
+            }
+            return charges;
+
+        case 'fiction':
+            return 3 * numberOfDays;
+
+        case 'novel':
+            charges = 4.5;
+    
+            if (numberOfDays - 3 > 0) {
+                charges += (numberOfDays - 3) * 1.5;
+            }
+            return charges;
+        default:
+            throw Error('Invalid book type');
+    }
 };
 
 Book.prototype.initializeBookByName = async (bookName) => {
@@ -77,7 +99,9 @@ Book.prototype.getCharges = async (params = {}) => {
     }
 
     const numberOfDays = moment().diff(moment(lendingRecordQueryResult[0].lend_date), 'days');
-    return numberOfDays*(Book.chargesEnum[self.requiredBook.type] || Book.chargesEnum['regular']);
+    const charges = Book.getChargesByType({ type: self.requiredBook.type, numberOfDays });
+
+    return charges;
 }
 
 module.exports = Book;
